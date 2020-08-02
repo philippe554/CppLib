@@ -9,7 +9,13 @@ int main()
 
     auto test = zeros<int>({3, 5, 5});
 
-    test[Slice(1) & Slice(0,2) & Slice(0,5)] = ones<int>({2, 5});
+    test[Slice(0,3) & Slice(0,2) & Slice(0,5)] += ones<int>({3, 2, 5});
+
+    test[Slice(1) & Slice(0,2) & Slice(0,5)] += ones<int>({1, 2, 5});
+
+    test[Slice(0,3) & Slice(2) & Slice(0,5)] += ones<int>({3, 2, 5})[Slice(0,3) & Slice(0) & Slice(0,5)];
+
+    test[Slice(0,3) & Slice(2) & Slice(0,5)] += ones<int>({3, 5});
 
     test[Slice(1) & Slice(3,5) & Slice(3,5)] = ones<int>({1, 1, 1, 1, 2, 2});
 
