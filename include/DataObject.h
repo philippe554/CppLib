@@ -6,6 +6,7 @@ public:
     DataObject(int size)
     {
         buffer = new T[size];
+        this->size = size;
     }
 
     ~DataObject()
@@ -14,4 +15,5 @@ public:
     }
 
     T* buffer;
+    int size;
 };
