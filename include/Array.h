@@ -139,18 +139,20 @@ public:
         std::vector<int> index2(other.shape.size());
 
         run(other, index1, index2, 0, 0, [](T& t1, T& t2){t1 = t2;});*/
-        run2(other, 0, 0, 1, 1, 0, 0, [](T& t1, T& t2){t1 = t2;});
+        //run2(other, 0, 0, 1, 1, 0, 0, [](T& t1, T& t2){t1 = t2;});
+        run31(other, [](T& t1, T& t2){t1 = t2;});
     }
 
     void operator+=(Array<T>&& other)
     {
-        std::cout << str(shape) << " " << str(other.shape) << "\n";
+        //std::cout << str(shape) << " " << str(other.shape) << "\n";
 
         /*std::vector<int> index1(shape.size());
         std::vector<int> index2(other.shape.size());
 
         run(other, index1, index2, 0, 0, [](T& t1, T& t2){t1 += t2;});*/
-        run2(other, 0, 0, 1, 1, 0, 0, [](T& t1, T& t2){t1 += t2;});
+        //run2(other, 0, 0, 1, 1, 0, 0, [](T& t1, T& t2){t1 += t2;});
+        run31(other, [](T& t1, T& t2){t1 += t2;});
     } 
 
     void run(Array<T>& other, std::vector<int>& index1, std::vector<int>& index2, int size1, int size2, std::function<void(T&,T&)> op)
@@ -237,6 +239,7 @@ public:
     {
         if(dim1 == physicalShape.size() && dim2 == other.physicalShape.size())
         {
+            std::cout << position1 << " ";
             op(data->buffer[position1], other.data->buffer[position2]);
             return;
         }
@@ -315,6 +318,155 @@ public:
             {
                 run2(other, position1 + (slice.ranges[slice.ranges.size() - 1 - dim1].start + i) * multiplier1, 
                             position2 + other.slice.ranges[other.slice.ranges.size() - 1 - dim2].start * multiplier2, 
+                            multiplier1 * physicalShape[physicalShape.size() - 1 - dim1],
+                            multiplier2 * other.physicalShape[other.physicalShape.size() - 1 - dim2],
+                            dim1 + 1,
+                            dim2 + 1,
+                            op);
+            }
+        }
+        else
+        {
+            std::cout << length1 << " " << length2 << " " << dim1 << " " << dim2 << " " << physicalShape.size() << " " << other.physicalShape.size() << "\n"; 
+            throw std::runtime_error("Not yet implemented");
+        }
+    }
+
+    void run31(Array<T>& other, std::function<void(T&,T&)> op)
+    {
+        int length1 = slice.ranges.back().getLength();
+        int length2 = other.slice.ranges.back().getLength();
+
+        if(length1 == length2)
+        {
+            run32(other, slice.ranges.back().start, 
+                        other.slice.ranges.back().start, 
+                        1, 1, length1,
+                        physicalShape.back(),
+                        other.physicalShape.back(),
+                        1,
+                        1,
+                        op);
+        }
+        else if(length1 == 1 && length2 >= 1)
+        {
+            run32(other, slice.ranges.back().start, 
+                        other.slice.ranges.back().start,
+                        0, 1, length2,
+                        physicalShape.back(),
+                        other.physicalShape.back(),
+                        1,
+                        1,
+                        op);
+        }
+        else if(length2 == 1 && length1 >= 1)
+        {
+            run32(other, slice.ranges.back().start, 
+                        other.slice.ranges.back().start,
+                        1, 0, length1,
+                        physicalShape.back(),
+                        other.physicalShape.back(),
+                        1,
+                        1,
+                        op);
+        }
+        else
+        {
+            throw std::runtime_error("Dimension mismatch");
+        }
+    }
+
+    void run32(Array<T>& other, int position1, int position2, int stride1, int stride2, int steps, int multiplier1, int multiplier2, int dim1, int dim2, std::function<void(T&,T&)> op)
+    {
+        if(dim1 == physicalShape.size() && dim2 == other.physicalShape.size())
+        {
+            for(int i = 0; i < steps; i++)
+            {
+                //std::cout << position1 + i * stride1 << " ";
+                op(data->buffer[position1 + i * stride1], other.data->buffer[position2 + i * stride2]);
+            }
+            return;
+        }
+
+        if(dim1 > physicalShape.size() || dim2 > other.physicalShape.size())
+        {
+            throw std::runtime_error("Implementation error");
+        }
+
+        if(dim1 == physicalShape.size())
+        {
+            int length2 = other.slice.ranges[other.slice.ranges.size() - 1 - dim2].getLength();
+
+            for(int i = 0; i < length2; i++)
+            {
+                run32(other, position1, 
+                            position2 + (other.slice.ranges[other.slice.ranges.size() - 1 - dim2].start + i) * multiplier2,
+                            stride1, stride2, steps, 
+                            multiplier1,
+                            multiplier2 * other.physicalShape[other.physicalShape.size() - 1 - dim2],
+                            dim1,
+                            dim2 + 1,
+                            op);
+            }
+            return;
+        }
+
+        if(dim2 == other.physicalShape.size())
+        {
+            int length1 = slice.ranges[slice.ranges.size() - 1 - dim1].getLength();
+
+            for(int i = 0; i < length1; i++)
+            {
+                run32(other, position1 + (slice.ranges[slice.ranges.size() - 1 - dim1].start + i) * multiplier1, 
+                            position2, 
+                            stride1, stride2, steps,
+                            multiplier1 * physicalShape[physicalShape.size() - 1 - dim1],
+                            multiplier2,
+                            dim1 + 1,
+                            dim2,
+                            op);
+            }
+            return;
+        }
+
+        int length1 = slice.ranges[slice.ranges.size() - 1 - dim1].getLength();
+        int length2 = other.slice.ranges[other.slice.ranges.size() - 1 - dim2].getLength();
+
+        if(length1 == length2)
+        {
+            for(int i = 0; i < length1; i++)
+            {
+                run32(other, position1 + (slice.ranges[slice.ranges.size() - 1 - dim1].start + i) * multiplier1, 
+                            position2 + (other.slice.ranges[other.slice.ranges.size() - 1 - dim2].start + i) * multiplier2,
+                            stride1, stride2, steps, 
+                            multiplier1 * physicalShape[physicalShape.size() - 1 - dim1],
+                            multiplier2 * other.physicalShape[other.physicalShape.size() - 1 - dim2],
+                            dim1 + 1,
+                            dim2 + 1,
+                            op);
+            }
+        }
+        else if(length1 == 1 && length2 >= 1)
+        {
+            for(int i = 0; i < length2; i++)
+            {
+                run32(other, position1 + slice.ranges[slice.ranges.size() - 1 - dim1].start * multiplier1, 
+                            position2 + (other.slice.ranges[other.slice.ranges.size() - 1 - dim2].start + i) * multiplier2,
+                            stride1, stride2, steps, 
+                            multiplier1 * physicalShape[physicalShape.size() - 1 - dim1],
+                            multiplier2 * other.physicalShape[other.physicalShape.size() - 1 - dim2],
+                            dim1 + 1,
+                            dim2 + 1,
+                            op);
+            }
+        }
+        else if(length2 == 1 && length1 >= 1)
+        {
+            for(int i = 0; i < length1; i++)
+            {
+                run32(other, position1 + (slice.ranges[slice.ranges.size() - 1 - dim1].start + i) * multiplier1, 
+                            position2 + other.slice.ranges[other.slice.ranges.size() - 1 - dim2].start * multiplier2,
+                            stride1, stride2, steps, 
                             multiplier1 * physicalShape[physicalShape.size() - 1 - dim1],
                             multiplier2 * other.physicalShape[other.physicalShape.size() - 1 - dim2],
                             dim1 + 1,

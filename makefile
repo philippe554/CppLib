@@ -1,5 +1,5 @@
-CC=g++
-CFLAGS = -std=c++17 -O3
+CC=g++-8
+CFLAGS = -std=c++2a -O3
 LDFLAGS = -lstdc++fs -pthread
 
 src = $(wildcard src/*.cpp)
