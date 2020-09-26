@@ -3,6 +3,7 @@
 #include <functional>
 
 #include "ArrayBase.h"
+#include "ArraySymbolic.h"
 
 template<class T>
 class Array;
@@ -50,6 +51,12 @@ public:
     Array<T> operator[](Slice& slice)
     {
         return Array(*this, slice);
+    }
+
+    template<class... Int>
+    T get(Int... args)
+    {
+        return 0;
     }
 
     //friend Array<T> zeros(std::vector<int> shape);
